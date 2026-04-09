@@ -1,9 +1,19 @@
 # Copyright (c) Meta Platforms, Inc. and affiliates.
 
 import os
+import sys
 
-if "PYOPENGL_PLATFORM" not in os.environ:
-    os.environ["PYOPENGL_PLATFORM"] = "egl"
+current_gl_platform = os.environ.get("PYOPENGL_PLATFORM", "").strip().lower()
+# Pick a backend that matches the host OS.
+# Forcing EGL on Windows raises: "Could not find module 'EGL'".
+if os.name == "nt":
+    # This pyrender version expects no env var for the default Pyglet backend.
+    # On Windows, values like "win32" or "pyglet" are treated as unsupported.
+    if current_gl_platform in ("win32", "pyglet", "egl"):
+        os.environ.pop("PYOPENGL_PLATFORM", None)
+elif sys.platform.startswith("linux"):
+    if current_gl_platform == "":
+        os.environ["PYOPENGL_PLATFORM"] = "egl"
 from typing import List, Optional
 
 import cv2

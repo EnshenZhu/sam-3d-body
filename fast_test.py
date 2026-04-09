@@ -7,7 +7,7 @@ from tools.vis_utils import visualize_sample_together
 estimator = setup_sam_3d_body(hf_repo_id="facebook/sam-3d-body-dinov3")
 
 # Load and process image
-img_bgr = cv2.imread("path/to/image.jpg")
+img_bgr = cv2.imread("./human.jpg")
 outputs = estimator.process_one_image(cv2.cvtColor(img_bgr, cv2.COLOR_BGR2RGB))
 
 # Visualize and save results

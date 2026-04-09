@@ -54,9 +54,22 @@ def main(args):
             name=args.segmentor_name, device=device, path=segmentor_path
         )
     if args.fov_name:
-        from tools.build_fov_estimator import FOVEstimator
+        try:
+            from tools.build_fov_estimator import FOVEstimator
 
-        fov_estimator = FOVEstimator(name=args.fov_name, device=device, path=fov_path)
+            fov_estimator = FOVEstimator(
+                name=args.fov_name, device=device, path=fov_path
+            )
+        except ModuleNotFoundError as e:
+            # MoGe is optional. Fall back to model-default intrinsics when unavailable.
+            if e.name == "moge" or str(e).startswith("No module named 'moge"):
+                print(
+                    "Warning: optional dependency 'moge' is not available. "
+                    "FOV estimation is disabled and default camera intrinsics will be used."
+                )
+                fov_estimator = None
+            else:
+                raise
 
     estimator = SAM3DBodyEstimator(
         sam_3d_body_model=model,

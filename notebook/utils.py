@@ -20,6 +20,9 @@ LIGHT_BLUE = (0.65098039, 0.74117647, 0.85882353)
 
 def setup_sam_3d_body(
     hf_repo_id: str = "facebook/sam-3d-body-vith",
+    checkpoint_path: str = "",
+    mhr_path: str = "",
+    hf_token: str = "",
     detector_name: str = "vitdet",
     segmentor_name: str = "sam2",
     fov_name: str = "moge2",
@@ -33,6 +36,9 @@ def setup_sam_3d_body(
 
     Args:
         hf_repo_id: HuggingFace repository ID for the model
+        checkpoint_path: Optional local path to model.ckpt to bypass HF download
+        mhr_path: Optional local path to assets/mhr_model.pt
+        hf_token: Optional HF token. Falls back to HF_TOKEN env var when not set.
         detector_name: Name of detector to use (default: "vitdet")
         segmentor_name: Name of segmentor to use (default: "sam2")
         fov_name: Name of FOV estimator to use (default: "moge2")
@@ -51,7 +57,13 @@ def setup_sam_3d_body(
         device = "cuda" if torch.cuda.is_available() else "cpu"
 
     # Load core model from HuggingFace
-    model, model_cfg = load_sam_3d_body_hf(hf_repo_id, device=device)
+    model, model_cfg = load_sam_3d_body_hf(
+        hf_repo_id,
+        token=hf_token or None,
+        checkpoint_path=checkpoint_path,
+        mhr_path=mhr_path,
+        device=device,
+    )
 
     # Initialize optional components
     human_detector, human_segmentor, fov_estimator = None, None, None
@@ -72,9 +84,20 @@ def setup_sam_3d_body(
 
     if fov_name:
         print(f"Loading FOV estimator from {fov_name}...")
-        from tools.build_fov_estimator import FOVEstimator
+        try:
+            from tools.build_fov_estimator import FOVEstimator
 
-        fov_estimator = FOVEstimator(name=fov_name, device=device)
+            fov_estimator = FOVEstimator(name=fov_name, device=device)
+        except ModuleNotFoundError as e:
+            # MoGe is optional. Fall back to model-default intrinsics when unavailable.
+            if e.name == "moge" or str(e).startswith("No module named 'moge"):
+                print(
+                    "Warning: optional dependency 'moge' is not available. "
+                    "FOV estimation is disabled and default camera intrinsics will be used."
+                )
+                fov_estimator = None
+            else:
+                raise
 
     # Create estimator wrapper
     estimator = SAM3DBodyEstimator(
